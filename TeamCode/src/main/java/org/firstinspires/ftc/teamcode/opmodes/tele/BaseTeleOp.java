@@ -8,6 +8,8 @@ import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.teamcode.data.Alliance;
+import org.firstinspires.ftc.teamcode.kowalski.ScannerResult;
+import org.firstinspires.ftc.teamcode.kowalski.TargetingScanner;
 import org.firstinspires.ftc.teamcode.mecanum.MecanumDrive;
 import org.firstinspires.ftc.teamcode.mecanum.MecanumMotor;
 import org.firstinspires.ftc.vision.VisionPortal;
@@ -23,8 +25,7 @@ public class BaseTeleOp extends LinearOpMode {
 
     final int CAM_X_RESOLUTION = 640; // The default of the vision processor */
 
-    private VisionPortal visionPortal;
-    private AprilTagProcessor aprilTag;
+    private TargetingScanner targetingScanner;
 
     private MecanumDrive drivetrain;
 
@@ -53,7 +54,8 @@ public class BaseTeleOp extends LinearOpMode {
         }
         // Initialise drivetrain and scanner objects
         this.initDriveTrain();
-        this.initTargetingScanner();
+        this.targetingScanner = new TargetingScanner(hardwareMap);
+        this.targetingScanner.scanFor = this.targetedCodes;
         // Variables
         boolean manualSteering = true;
         double speedLimit = 1.0;
@@ -64,6 +66,8 @@ public class BaseTeleOp extends LinearOpMode {
         double lastTagDirection = 0.0;
         double lastTagSeenAt = -1.0;
 
+        double targetingScannerRotation = 0.0;
+
 //        AndroidTextToSpeech tts = new AndroidTextToSpeech();
 //        tts.initialize();
         // Main loop
@@ -71,55 +75,29 @@ public class BaseTeleOp extends LinearOpMode {
         // TODO: split out targeting scanner into separate class
         while (opModeIsActive()) {
             // April Tag testing
-            List<AprilTagDetection> currentDetections = this.aprilTag.getDetections();
-            telemetry.addData("# AprilTags Detected", currentDetections.size());
+            // TODO: check if the tag belongs to the currently active (raised) hive
 
-            double targetingScannerRotation = 0.0;
+            ScannerResult scanRes = this.targetingScanner.scan();
+            if (scanRes.any)
+                telemetry.addData("BEARING TO TAG", scanRes.bearing);
+            else
+                telemetry.addLine("NO TAG SEEN");
 
-            for (AprilTagDetection detection : currentDetections) {
-                if (detection instanceof AprilTagClusterDetection) {
-                    AprilTagClusterDetection clusterDet = (AprilTagClusterDetection) detection;
-                    telemetry.addLine(String.format("\n==== Tag Cluster (%s)", clusterDet.metadata.name));
-                    telemetry.addLine(String.format("Percent tags found: %d", clusterDet.percentClusterFound));
-                    telemetry.addLine(String.format("XYZ %6.1f %6.1f %6.1f  (cm)", detection.ftcPose.x, detection.ftcPose.y, detection.ftcPose.z));
-                    telemetry.addLine(String.format("PRY %6.1f %6.1f %6.1f  (deg)", detection.ftcPose.pitch, detection.ftcPose.roll, detection.ftcPose.yaw));
-                    telemetry.addLine(String.format("RBE %6.1f %6.1f %6.1f  (cm, deg, deg)", detection.ftcPose.range, detection.ftcPose.bearing, detection.ftcPose.elevation));
-
-                    boolean tagUsed = false;
-                    for (String usedTag : this.targetedCodes) {
-                        if (clusterDet.metadata.name.equalsIgnoreCase(usedTag)) {
-                            tagUsed = true;
-                            break;
-                        }
-                    }
-
-                    // TODO: check if the tag belongs to the currently active (raised) hive
-
-                    if (tagUsed) {
-                        // Test: turn to buffer
-                        double relativeTurn = -0.02 * detection.ftcPose.bearing;
-                        final double MARGIN = 0.1;
-                        if (relativeTurn < -MARGIN || relativeTurn > MARGIN) {
-                            targetingScannerRotation = relativeTurn;
-
-                            // TODO: only memorise if it is in the edge of the camera FOV
-                            lastTagSeenAt = getRuntime();
-                            lastTagDirection = relativeTurn < 0.0 ? -1.0 : 1.0;
-                        } else {
-                            targetingScannerRotation = 0.0;
-                        }
-                        System.out.println(targetingScannerRotation);
-                    }
+            if (scanRes.any) {
+                // Test: turn to buffer
+                double relativeTurn = -0.02 * scanRes.bearing;
+                final double MARGIN = 0.1;
+                if (Math.abs(relativeTurn) > MARGIN) {
+                    targetingScannerRotation = relativeTurn;
+                } else {
+                    targetingScannerRotation = 0.0;
                 }
-            }   // end for() loop
+            }
 
-            // Rotate to where we previously saw a tag if we are in targeting scanner mode
-            // but no tag is seen.  If the previously seen tag data is too old, we purge it.
-            if (getRuntime() - lastTagSeenAt > 2.0)
-                lastTagDirection = 0.0;
             telemetry.addData("Original targetingScannerRotation", targetingScannerRotation);
-            if (targetingScannerRotation == 0.0 && lastTagDirection != 0.0)
-                targetingScannerRotation = lastTagDirection;
+            System.out.printf("TS rotation: %s %f\n",
+                    scanRes.any ? "FOUND" : "not found", targetingScannerRotation);
+
             telemetry.addData("New targetingScannerRotation", targetingScannerRotation);
             telemetry.addData("Current t", getRuntime());
             telemetry.addData("Last tag direction", lastTagDirection);
@@ -131,7 +109,7 @@ public class BaseTeleOp extends LinearOpMode {
             telemetry.addLine("RBE = Range, Bearing & Elevation");
 
             // Gamepad mode
-            if (gamepad1.x) {
+            if (gamepad1.x || Math.abs(gamepad1.right_stick_x) > .01) {
                 manualSteering = true;
 //                tts.speak("Manual steering activated.");
             }
@@ -164,11 +142,14 @@ public class BaseTeleOp extends LinearOpMode {
                             : targetingScannerRotation)
                     .apply();
 
+            // Decay TS rotation
+            targetingScannerRotation *= 0.90;
+
             sleep(20);
         }
 
         // Tear down vision portal
-        this.visionPortal.close();
+        this.targetingScanner.close();
     }
 
     private void initDriveTrain() {
@@ -182,30 +163,5 @@ public class BaseTeleOp extends LinearOpMode {
                 .setSigns(MecanumMotor.FrontRight, "-", "+", "-")
                 .setSigns(MecanumMotor.BackLeft, "+", "-", "-")
                 .setSigns(MecanumMotor.BackRight, "+", "+", "+");
-    }
-
-    private void initTargetingScanner() {
-        // For camera information: see ConceptAprilTag in the sample.
-//        CameraCompatibilityManager.getInstance()
-//                .addQuirk(this.CAMERA_vID, this.CAMERA_pID, CameraCompatibilityManager.Quirk.AVOID_LIB_USB_RESET_DEVICE);
-
-        this.aprilTag = new AprilTagProcessor.Builder()
-                .setOutputUnits(DistanceUnit.CM, AngleUnit.DEGREES)
-                // The 36h11 is the only tag family used by the FTC competition
-                .setTagFamily(AprilTagProcessor.TagFamily.TAG_36h11)
-                // If this is not done, it will detect tags incorrectly
-                // .setTagLibrary(new AprilTagLibrary.Builder().build())
-                .build();
-
-        VisionPortal.Builder visBuilder = new VisionPortal.Builder();
-        // Add camera
-        visBuilder.setCamera(hardwareMap.get(WebcamName.class, "Webcam 1"));
-        // Enable camera streaming to driver station (this is not allowed
-        // in matches, I believe)
-        visBuilder.enableLiveView(true);
-        // Add April Tag processor
-        visBuilder.addProcessor(this.aprilTag);
-
-        this.visionPortal = visBuilder.build();
     }
 }
