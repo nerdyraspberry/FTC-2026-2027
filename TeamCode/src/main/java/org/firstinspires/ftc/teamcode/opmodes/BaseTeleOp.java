@@ -1,32 +1,28 @@
-package org.firstinspires.ftc.teamcode;
+package org.firstinspires.ftc.teamcode.opmodes;
 
 import android.annotation.SuppressLint;
 
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
-import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
-import org.firstinspires.ftc.robotcore.external.android.AndroidTextToSpeech;
-import org.firstinspires.ftc.robotcore.external.hardware.camera.CameraCompatibilityManager;
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+import org.firstinspires.ftc.teamcode.data.Alliance;
 import org.firstinspires.ftc.teamcode.mecanum.MecanumDrive;
 import org.firstinspires.ftc.teamcode.mecanum.MecanumMotor;
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagClusterDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
-import org.firstinspires.ftc.vision.apriltag.AprilTagLibrary;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 import org.firstinspires.ftc.vision.apriltag.AprilTagSingleDetection;
 
 import java.util.List;
 
-@TeleOp(name="Base TeleOp")
 public class BaseTeleOp extends LinearOpMode {
-    private final int CAMERA_vID = 0x046D;
+    /*private final int CAMERA_vID = 0x046D;
     private final int CAMERA_pID = 0x0892;
 
-    final int CAM_X_RESOLUTION = 640; // The default of the vision processor
+    final int CAM_X_RESOLUTION = 640; // The default of the vision processor */
 
     private VisionPortal visionPortal;
     private AprilTagProcessor aprilTag;
@@ -35,24 +31,45 @@ public class BaseTeleOp extends LinearOpMode {
 
     private String[] targetedCodes;
 
+    public void setAlliance(Alliance alliance) {
+        // This OpMode can be executed as either belonging to the Red or the Blue alliance.
+        // This is done by making two TeleOp classes, BlueTeleOp and RedTeleOp, which are just
+        // a thin wrapper around BaseTeleOp, calling this function and then runOpMode.
+        if (alliance == Alliance.Blue) {
+            this.targetedCodes = new String[]{"BLUE AUDIENCE", "BLUE SCORING"};
+        } else {
+            this.targetedCodes = new String[]{"RED AUDIENCE", "RED SCORING"};
+        }
+    }
+
     @SuppressLint("DefaultLocale")
     @Override
     public void runOpMode() throws InterruptedException {
+        // Sanity check: Check if the alliance has been configured. If not, the OpMode
+        // was invoked incorrectly.
+        if (this.targetedCodes.length == 0) {
+            throw new IllegalStateException(
+                    "OpMode is uitgevoerd zonder dat de alliantiekleur is ingesteld!"
+            );
+        }
+        // Initialise drivetrain and scanner objects
         this.initDriveTrain();
         this.initTargetingScanner();
-
-        this.targetedCodes = new String[]{"RED AUDIENCE", "RED SCORING"};
-
+        // Variables
         boolean manualSteering = true;
         double speedLimit = 1.0;
 
         boolean debounceA = false;
         boolean debounceB = false;
 
+        double lastTagDirection = 0.0;
+        double lastTagSeenAt = -1.0;
+
 //        AndroidTextToSpeech tts = new AndroidTextToSpeech();
 //        tts.initialize();
-
+        // Main loop
         waitForStart();
+        // TODO: split out targeting scanner into separate class
         while (opModeIsActive()) {
             // April Tag testing
             List<AprilTagDetection> currentDetections = this.aprilTag.getDetections();
@@ -61,34 +78,13 @@ public class BaseTeleOp extends LinearOpMode {
             double targetingScannerRotation = 0.0;
 
             for (AprilTagDetection detection : currentDetections) {
-                if (detection instanceof AprilTagSingleDetection) {
-                    AprilTagSingleDetection singleDet = (AprilTagSingleDetection) detection;
-
-                    if (singleDet.metadata != null) {
-                        telemetry.addLine(String.format("\n==== (ID %d) %s", singleDet.id, singleDet.metadata.name));
-                        telemetry.addLine(String.format("XYZ %6.1f %6.1f %6.1f  (inch)", detection.ftcPose.x, detection.ftcPose.y, detection.ftcPose.z));
-                        telemetry.addLine(String.format("PRY %6.1f %6.1f %6.1f  (deg)", detection.ftcPose.pitch, detection.ftcPose.roll, detection.ftcPose.yaw));
-                        telemetry.addLine(String.format("RBE %6.1f %6.1f %6.1f  (inch, deg, deg)", detection.ftcPose.range, detection.ftcPose.bearing, detection.ftcPose.elevation));
-                    } else {
-                        telemetry.addLine(String.format("\n==== (ID %d) Unknown", singleDet.id));
-                        telemetry.addLine(String.format("Center %6.0f %6.0f   (pixels)", singleDet.center.x, singleDet.center.y));
-
-                        // Test: turn to buffer
-                        double relativeTurn = 2.0*(singleDet.center.x / (double)this.CAM_X_RESOLUTION) - 1.0;
-                        final double MARGIN = 0.1;
-                        if (relativeTurn < -MARGIN || relativeTurn > MARGIN) {
-                            targetingScannerRotation = .7 * relativeTurn;
-                        } else {
-                            targetingScannerRotation = 0.0;
-                        }
-                    }
-                } else {
+                if (detection instanceof AprilTagClusterDetection) {
                     AprilTagClusterDetection clusterDet = (AprilTagClusterDetection) detection;
                     telemetry.addLine(String.format("\n==== Tag Cluster (%s)", clusterDet.metadata.name));
                     telemetry.addLine(String.format("Percent tags found: %d", clusterDet.percentClusterFound));
-                    telemetry.addLine(String.format("XYZ %6.1f %6.1f %6.1f  (inch)", detection.ftcPose.x, detection.ftcPose.y, detection.ftcPose.z));
+                    telemetry.addLine(String.format("XYZ %6.1f %6.1f %6.1f  (cm)", detection.ftcPose.x, detection.ftcPose.y, detection.ftcPose.z));
                     telemetry.addLine(String.format("PRY %6.1f %6.1f %6.1f  (deg)", detection.ftcPose.pitch, detection.ftcPose.roll, detection.ftcPose.yaw));
-                    telemetry.addLine(String.format("RBE %6.1f %6.1f %6.1f  (inch, deg, deg)", detection.ftcPose.range, detection.ftcPose.bearing, detection.ftcPose.elevation));
+                    telemetry.addLine(String.format("RBE %6.1f %6.1f %6.1f  (cm, deg, deg)", detection.ftcPose.range, detection.ftcPose.bearing, detection.ftcPose.elevation));
 
                     boolean tagUsed = false;
                     for (String usedTag : this.targetedCodes) {
@@ -98,12 +94,18 @@ public class BaseTeleOp extends LinearOpMode {
                         }
                     }
 
+                    // TODO: check if the tag belongs to the currently active (raised) hive
+
                     if (tagUsed) {
                         // Test: turn to buffer
                         double relativeTurn = -0.02 * detection.ftcPose.bearing;
                         final double MARGIN = 0.1;
                         if (relativeTurn < -MARGIN || relativeTurn > MARGIN) {
                             targetingScannerRotation = relativeTurn;
+
+                            // TODO: only memorise if it is in the edge of the camera FOV
+                            lastTagSeenAt = getRuntime();
+                            lastTagDirection = relativeTurn < 0.0 ? -1.0 : 1.0;
                         } else {
                             targetingScannerRotation = 0.0;
                         }
@@ -111,6 +113,18 @@ public class BaseTeleOp extends LinearOpMode {
                     }
                 }
             }   // end for() loop
+
+            // Rotate to where we previously saw a tag if we are in targeting scanner mode
+            // but no tag is seen.  If the previously seen tag data is too old, we purge it.
+            if (getRuntime() - lastTagSeenAt > 2.0)
+                lastTagDirection = 0.0;
+            telemetry.addData("Original targetingScannerRotation", targetingScannerRotation);
+            if (targetingScannerRotation == 0.0 && lastTagDirection != 0.0)
+                targetingScannerRotation = lastTagDirection;
+            telemetry.addData("New targetingScannerRotation", targetingScannerRotation);
+            telemetry.addData("Current t", getRuntime());
+            telemetry.addData("Last tag direction", lastTagDirection);
+            telemetry.addData("Last tag time", lastTagSeenAt);
 
             // Add "key" information to telemetry
             telemetry.addLine("\nkey:\nXYZ = X (Right), Y (Forward), Z (Up) dist.");
