@@ -3,9 +3,11 @@ package org.firstinspires.ftc.teamcode.opmodes.tele;
 import android.annotation.SuppressLint;
 
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
+import com.qualcomm.robotcore.hardware.DcMotor;
 
 import org.firstinspires.ftc.teamcode.data.Alliance;
 import org.firstinspires.ftc.teamcode.data.MecanumConfig;
+import org.firstinspires.ftc.teamcode.kowalski.Debouncer;
 import org.firstinspires.ftc.teamcode.kowalski.IMUWrapper;
 import org.firstinspires.ftc.teamcode.kowalski.ScannerResult;
 import org.firstinspires.ftc.teamcode.kowalski.TargetingScanner;
@@ -41,30 +43,32 @@ public class BaseTeleOp extends LinearOpMode {
                     "OpMode is uitgevoerd zonder dat de alliantiekleur is ingesteld!"
             );
         }
-        // Initialise drivetrain and scanner objects
+        // Initialise hardware
         this.initDriveTrain();
         this.targetingScanner = new TargetingScanner(hardwareMap);
         this.targetingScanner.scanFor = this.targetedCodes;
         this.imu = new IMUWrapper(hardwareMap);
+
+        DcMotor intake = hardwareMap.get(DcMotor.class, "intake");
+        DcMotor largeOuttake = hardwareMap.get(DcMotor.class, "largeOuttake");
+        DcMotor smallOuttake = hardwareMap.get(DcMotor.class, "smallOuttake");
         // Variables
         boolean manualSteering = true;
         double speedLimit = 1.0;
 
-        boolean debounceA = false;
-        boolean debounceB = false;
+        Debouncer debounceDown = new Debouncer();
+        Debouncer debounceUp = new Debouncer();
 
         double lastTagDirection = 0.0;
         double lastTagSeenAt = -1.0;
 
         double targetingScannerRotation = 0.0;
 
-//        AndroidTextToSpeech tts = new AndroidTextToSpeech();
-//        tts.initialize();
         // Main loop
         waitForStart();
         // TODO: split out targeting scanner into separate class
         while (opModeIsActive()) {
-            // April Tag testing
+            // Targeting scanner / AprilTag detector
             // TODO: check if the tag belongs to the currently active (raised) hive
 
             ScannerResult scanRes = this.targetingScanner.scan();
@@ -92,40 +96,28 @@ public class BaseTeleOp extends LinearOpMode {
             telemetry.addData("Current t", getRuntime());
             telemetry.addData("Last tag direction", lastTagDirection);
             telemetry.addData("Last tag time", lastTagSeenAt);
-
-            // Add "key" information to telemetry
-            telemetry.addLine("\nkey:\nXYZ = X (Right), Y (Forward), Z (Up) dist.");
-            telemetry.addLine("PRY = Pitch, Roll & Yaw (XYZ Rotation)");
-            telemetry.addLine("RBE = Range, Bearing & Elevation");
-
             // Gamepad mode
-            if (gamepad1.x || Math.abs(gamepad1.right_stick_x) > .01) {
+            // - Mode configuration
+            if (gamepad1.x || Math.abs(gamepad1.right_stick_x) > .01)
                 manualSteering = true;
-//                tts.speak("Manual steering activated.");
-            }
-            if (gamepad1.y) {
+            if (gamepad1.y)
                 manualSteering = false;
-//                tts.speak("Targeting scanner activated.");
-            }
-
-            if (gamepad1.dpad_down) {
-                if (!debounceA) {
-                    speedLimit = Math.max(0.0, speedLimit - .1);
-                    debounceA = true;
-                }
-            } else debounceA = false;
-            if (gamepad1.dpad_up) {
-                if (!debounceB) {
-                    speedLimit = Math.min(speedLimit + .1, 1.0);
-                    debounceB = true;
-                }
-            } else debounceB = false;
-
-
+            // - Speed limiter
+            if (debounceDown.wasJustPressed(gamepad1.dpad_down))
+                speedLimit = Math.max(0.0, speedLimit - .1);
+            if (debounceUp.wasJustPressed(gamepad1.dpad_up))
+                speedLimit = Math.min(speedLimit + .1, 1.0);
+            // - Intake / outtake control
+            intake.setPower(gamepad1.a ? 1.0 : 0.0);
+            largeOuttake.setPower(gamepad1.dpad_right ? 1.0 : 0.0);
+            smallOuttake.setPower(gamepad1.dpad_left ? 1.0 : 0.0);
+            // TODO: what are we going to use to stop the balls from entering the outtakes
+            //       automatically? Once this is known, that can be programmed too!
+            // - Mode telemetry
             telemetry.addData("Mode", manualSteering ? "Manual Steering" : "Targeting Scanner");
             telemetry.addData("Speed limit", speedLimit);
             telemetry.update();
-
+            // Configure the drivetrain
             drivetrain
                     .move(gamepad1.left_stick_x * speedLimit, gamepad1.left_stick_y * speedLimit)
                     .rotate(manualSteering ? gamepad1.right_stick_x * speedLimit
