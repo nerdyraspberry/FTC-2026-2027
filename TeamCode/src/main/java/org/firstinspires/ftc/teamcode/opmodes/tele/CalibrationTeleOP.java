@@ -6,11 +6,13 @@ import com.qualcomm.robotcore.hardware.IMU;
 
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.teamcode.data.MecanumConfig;
+import org.firstinspires.ftc.teamcode.kowalski.IMUWrapper;
 import org.firstinspires.ftc.teamcode.mecanum.MecanumDrive;
 import org.firstinspires.ftc.teamcode.mecanum.MecanumMotor;
 
 public class CalibrationTeleOP extends LinearOpMode {
-    private IMU imu;
+    private IMUWrapper imu;
     private MecanumDrive drivetrain;
     private double firstYaw;
     private double secondYaw;
@@ -27,17 +29,20 @@ public class CalibrationTeleOP extends LinearOpMode {
     @Override
     public void runOpMode() throws InterruptedException {
         this.initDriveTrain();
-        this.initIMU();
-        this.resetYaw();
+
+        this.imu = new IMUWrapper(hardwareMap);
+        this.imu.resetYaw();
+
         waitForStart();
         while (opModeIsActive()) {
             if (gamepad1.x) {
-                this.resetYaw();
-                firstYaw = this.getYaw();
-                drivetrain.setSpeed(initialLeftSpeed, initialRightSpeed);
+                this.imu.resetYaw();
+                firstYaw = this.imu.getYaw();
+                drivetrain.setDrivingCorrection(initialLeftSpeed, initialRightSpeed);
+                drivetrain.move(0, 1).apply();
                 sleep(measuringTime);
-                secondYaw = this.getYaw();
-                drivetrain.setSpeed(0,0);
+                secondYaw = this.imu.getYaw();
+                drivetrain.move(0, 0).apply();
                 difference = firstYaw - secondYaw;
                 if (firsttime && difference >0) {
                     leaningRight = true;
@@ -98,32 +103,13 @@ public class CalibrationTeleOP extends LinearOpMode {
             }
         }
     }
-    private void initIMU() {
-        this.imu = hardwareMap.get(IMU.class, "imu");
-        // TODO bepaal orientatie en zet de juiste dingen neer bij logo en usb directie
-        RevHubOrientationOnRobot revHubOrientationOnRobot = new RevHubOrientationOnRobot(RevHubOrientationOnRobot.LogoFacingDirection.DOWN, RevHubOrientationOnRobot.UsbFacingDirection.DOWN);
-        imu.initialize(new IMU.Parameters(revHubOrientationOnRobot));
-    }
-    // mag alleen gebruikt worden nadat intitIMU()
-    private double getYaw() {
-        return this.imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.DEGREES);
-    }
-    // mag alleen gebruikt worden nadat intitIMU()
-    private void resetYaw() {
-        this.imu.resetYaw();
-    }
+
   private void initDriveTrain() {
       this.drivetrain = new MecanumDrive(
               hardwareMap,
               "left forward", "left backward",
               "right forward", "right backward"
       );
-      this.drivetrain
-              .setSigns(MecanumMotor.FrontLeft, "-", "-", "+")
-              .setSigns(MecanumMotor.FrontRight, "-", "+", "-")
-              .setSigns(MecanumMotor.BackLeft, "+", "-", "-")
-              .setSigns(MecanumMotor.BackRight, "+", "+", "+");
-
-
+      MecanumConfig.apply(this.drivetrain);
   }
 }

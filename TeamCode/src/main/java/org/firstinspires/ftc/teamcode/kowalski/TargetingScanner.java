@@ -13,6 +13,12 @@ import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 import java.util.List;
 
 public class TargetingScanner {
+    /*
+    private final int CAMERA_vID = 0x046D;
+    private final int CAMERA_pID = 0x0892;
+
+    final int CAM_X_RESOLUTION = 640; // The default of the vision processor */
+
     AprilTagProcessor aprilTag;
     VisionPortal visionPortal;
 

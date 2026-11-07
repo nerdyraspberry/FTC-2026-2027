@@ -19,6 +19,8 @@ public class MecanumDrive {
 
     private double xRate = 0, yRate = 0, turnRate = 0;
 
+    private double leftMultiplier = 1, rightMultiplier = 1;
+
     /**
      * Create a new MecanumDrive instance from a hardware map and DcMotor names
      * @param hwMap The hardware map
@@ -123,6 +125,20 @@ public class MecanumDrive {
         return this;
     }
 
+    /** These multipliers allow to let the robot drive to the side, or instead to calibrate it to
+     *  drive straight if its driving is lopsided.
+     *  Please note that this only works for driving forward and backward.
+     *  TODO: can these be re-used for correcting lateral or rotational movement? */
+    public void setDrivingCorrection(double left, double right) {
+        this.leftMultiplier = left;
+        this.rightMultiplier = right;
+    }
+
+    /** Get the current driving correction. */
+    public double[] getDrivingCorrection() {
+        return new double[]{this.leftMultiplier, this.rightMultiplier};
+    }
+
     /**
      * Set the turn rate for the robot. This doesn't actually rotate the robot, see .apply()
      * @param turnRate How fast to turn the robot
@@ -139,23 +155,16 @@ public class MecanumDrive {
      */
     public void apply() {
         frontLeft.setPower(
-                this.xFL * xRate + this.yFL * yRate + this.turnRateFL * turnRate
+                this.xFL * xRate + this.yFL * yRate * leftMultiplier + this.turnRateFL * turnRate
         );
         frontRight.setPower(
-                this.xFR * xRate + this.yFR * yRate + this.turnRateFR * turnRate
+                this.xFR * xRate + this.yFR * yRate * rightMultiplier + this.turnRateFR * turnRate
         );
         backLeft.setPower(
-                this.xBL * xRate + this.yBL * yRate + this.turnRateBL * turnRate
+                this.xBL * xRate + this.yBL * yRate * leftMultiplier + this.turnRateBL * turnRate
         );
         backRight.setPower(
-                this.xBR * xRate + this.yBR * yRate + this.turnRateBR * turnRate
+                this.xBR * xRate + this.yBR * yRate * rightMultiplier + this.turnRateBR * turnRate
         );
-    }
-// voor de calibratie
-    public void setSpeed(double leftSpeed, double rightSpeed) {
-        frontLeft.setPower(leftSpeed);
-        backLeft.setPower(leftSpeed);
-        frontRight.setPower(rightSpeed);
-        backRight.setPower(rightSpeed);
     }
 }
