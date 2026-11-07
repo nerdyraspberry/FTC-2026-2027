@@ -40,26 +40,26 @@ public class CalibrationTeleOP extends LinearOpMode {
                     telemetry.addData("RightSpeed", initialRightSpeed);
                     telemetry.addData("LeftSpeed", initialLeftSpeed);
                     telemetry.update();
-                    initialRightSpeed += 0.01;
+                    initialRightSpeed -= 0.01;
                 } else if (difference >= 5) {
                     telemetry.addData("Difference smaller then 5 degrees", difference);
                     telemetry.addData("RightSpeed", initialRightSpeed);
                     telemetry.addData("LeftSpeed", initialLeftSpeed);
                     telemetry.update();
-                    initialRightSpeed += 0.01;
+                    initialLeftSpeed -= 0.01;
                 } else if (difference > 0) {
                     telemetry.addData("difference", difference);
                     telemetry.addData("RightSpeed", initialRightSpeed);
                     telemetry.addData("LeftSpeed", initialLeftSpeed);
                     telemetry.update();
-                    initialRightSpeed += increase;
+                    initialLeftSpeed -= increase;
                 }
                 else if (difference < 0) {
                     telemetry.addData("difference", difference);
                     telemetry.addData("RightSpeed", initialRightSpeed);
                     telemetry.addData("LeftSpeed", initialLeftSpeed);
                     telemetry.update();
-                    initialLeftSpeed += increase;
+                    initialRightSpeed -= increase;
                 }
             }
         }
