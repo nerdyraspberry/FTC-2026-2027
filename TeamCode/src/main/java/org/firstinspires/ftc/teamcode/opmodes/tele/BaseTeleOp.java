@@ -173,6 +173,7 @@ public class BaseTeleOp extends LinearOpMode {
     }
 
     private void initIMU() {
+        // de IMU initializeren
         this.imu = hardwareMap.get(IMU.class, "imu");
         // TODO bepaal orientatie en zet de juiste dingen neer bij logo en usb directie
         RevHubOrientationOnRobot revHubOrientationOnRobot = new RevHubOrientationOnRobot(RevHubOrientationOnRobot.LogoFacingDirection.DOWN, RevHubOrientationOnRobot.UsbFacingDirection.DOWN);
