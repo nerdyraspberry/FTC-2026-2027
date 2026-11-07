@@ -151,4 +151,11 @@ public class MecanumDrive {
                 this.xBR * xRate + this.yBR * yRate + this.turnRateBR * turnRate
         );
     }
+
+    public void setSpeed(double leftSpeed, double rightSpeed) {
+        frontLeft.setPower(leftSpeed);
+        backLeft.setPower(leftSpeed);
+        frontRight.setPower(rightSpeed);
+        backRight.setPower(rightSpeed);
+    }
 }
