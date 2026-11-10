@@ -130,6 +130,12 @@ public class MecanumDrive {
      *  Please note that this only works for driving forward and backward.
      *  TODO: can these be re-used for correcting lateral or rotational movement? */
     public void setDrivingCorrection(double left, double right) {
+        if (left < 0.0 || right < 0.0 || left > 1.0 || right > 1.0) {
+            throw new IllegalArgumentException(
+                    "Driving corrections must be between 0.0 and 1.0, inclusive!"
+            );
+        }
+
         this.leftMultiplier = left;
         this.rightMultiplier = right;
     }
@@ -152,6 +158,8 @@ public class MecanumDrive {
     /**
      * Sets the powers on the motors based on the signs (.setSigns),
      * movement (.move) and rotation speed (.rotate).
+     * The forward movement is also influenced by the driving corrections set by
+     * setDrivingCorrection.
      */
     public void apply() {
         frontLeft.setPower(

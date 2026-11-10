@@ -10,5 +10,7 @@ public class MecanumConfig {
                 .setSigns(MecanumMotor.FrontRight, "-", "+", "-")
                 .setSigns(MecanumMotor.BackLeft, "+", "-", "-")
                 .setSigns(MecanumMotor.BackRight, "+", "+", "+");
+        // TODO: apply motor calibration here
+        // drive.setDrivingCorrection(1.0, 1.0);
     }
 }
