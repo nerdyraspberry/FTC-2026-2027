@@ -17,6 +17,9 @@ public class AutoShooter {
     public final double SERVO_ON = 90.0;
 
     public AutoShooter(DcMotor shooter, Servo hatch) {
+        // TODO: this can probably be rewritten to use the state machine.
+        //   This has no priority; for now, keeping the thing working is
+        //   more important.
         this.shooter = shooter;
         this.hatch = hatch;
 

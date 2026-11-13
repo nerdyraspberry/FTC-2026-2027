@@ -76,7 +76,6 @@ public class BaseTeleOp extends LinearOpMode {
 
         // Main loop
         waitForStart();
-        // TODO: split out targeting scanner into separate class
         while (opModeIsActive()) {
             double time = getRuntime();
 
@@ -145,10 +144,7 @@ public class BaseTeleOp extends LinearOpMode {
             // - - Update intake/outtake motors
 //            largeAutoShooter.tick(time);
             smallAutoShooter.tick(time);
-//            hatch.setPosition(gamepad1.b ? 90.0 : 0.0);
             telemetry.addData("Outtake Mode", smallAutoShooter.getState());
-            // TODO: what are we going to use to stop the balls from entering the outtakes
-            //       automatically? Once this is known, that can be programmed too!
             // - Mode telemetry
             telemetry.addData("Mode", manualSteering ? "Manual Steering" : "Targeting Scanner");
             telemetry.addData("Speed limit", speedLimit);
