@@ -4,9 +4,11 @@ import android.annotation.SuppressLint;
 
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.Servo;
 
 import org.firstinspires.ftc.teamcode.data.Alliance;
 import org.firstinspires.ftc.teamcode.data.MecanumConfig;
+import org.firstinspires.ftc.teamcode.kowalski.autoshooter.AutoShooter;
 import org.firstinspires.ftc.teamcode.kowalski.Debouncer;
 import org.firstinspires.ftc.teamcode.kowalski.IMUWrapper;
 import org.firstinspires.ftc.teamcode.kowalski.ScannerResult;
@@ -50,24 +52,34 @@ public class BaseTeleOp extends LinearOpMode {
         this.imu = new IMUWrapper(hardwareMap);
 
         DcMotor intake = hardwareMap.get(DcMotor.class, "intake");
-        DcMotor largeOuttake = hardwareMap.get(DcMotor.class, "largeOuttake");
+//        DcMotor largeOuttake = hardwareMap.get(DcMotor.class, "largeOuttake");
         DcMotor smallOuttake = hardwareMap.get(DcMotor.class, "smallOuttake");
+        Servo hatch = hardwareMap.get(Servo.class, "hatch");
         // Variables
         boolean manualSteering = true;
+        boolean intakeRunning = false;
         double speedLimit = 1.0;
 
         Debouncer debounceDown = new Debouncer();
         Debouncer debounceUp = new Debouncer();
+        Debouncer debounceIntake = new Debouncer();
+        Debouncer debouncePrev = new Debouncer();
+        Debouncer debounceNext = new Debouncer();
 
         double lastTagDirection = 0.0;
         double lastTagSeenAt = -1.0;
 
         double targetingScannerRotation = 0.0;
 
+//        AutoShooter largeAutoShooter = new AutoShooter(largeOuttake, hatch);
+        AutoShooter smallAutoShooter = new AutoShooter(smallOuttake, hatch);
+
         // Main loop
         waitForStart();
         // TODO: split out targeting scanner into separate class
         while (opModeIsActive()) {
+            double time = getRuntime();
+
             // Targeting scanner / AprilTag detector
             // TODO: check if the tag belongs to the currently active (raised) hive
 
@@ -108,9 +120,33 @@ public class BaseTeleOp extends LinearOpMode {
             if (debounceUp.wasJustPressed(gamepad1.dpad_up))
                 speedLimit = Math.min(speedLimit + .1, 1.0);
             // - Intake / outtake control
-            intake.setPower(gamepad1.a ? 1.0 : 0.0);
-            largeOuttake.setPower(gamepad1.dpad_right ? 1.0 : 0.0);
-            smallOuttake.setPower(gamepad1.dpad_left ? 1.0 : 0.0);
+            if (debounceIntake.wasJustPressed(gamepad1.a))
+                intakeRunning = !intakeRunning;
+            intake.setPower(intakeRunning ? 1.0 : 0.0);
+            if (gamepad1.dpad_left)
+                smallAutoShooter.start(time);
+            if (gamepad1.b) {
+                if (smallAutoShooter.isRunning()) smallAutoShooter.abort();
+//                if (largeAutoShooter.isRunning()) largeAutoShooter.abort();
+            }
+
+            if (debouncePrev.wasJustPressed(gamepad1.left_trigger_pressed)) {
+                // Cycle back
+                smallAutoShooter.setState(
+                        smallAutoShooter.getState().back()
+                );
+            }
+            if (debounceNext.wasJustPressed(gamepad1.right_trigger_pressed)) {
+                // Cycle forward
+                smallAutoShooter.setState(
+                        smallAutoShooter.getState().next()
+                );
+            }
+            // - - Update intake/outtake motors
+//            largeAutoShooter.tick(time);
+            smallAutoShooter.tick(time);
+//            hatch.setPosition(gamepad1.b ? 90.0 : 0.0);
+            telemetry.addData("Outtake Mode", smallAutoShooter.getState());
             // TODO: what are we going to use to stop the balls from entering the outtakes
             //       automatically? Once this is known, that can be programmed too!
             // - Mode telemetry

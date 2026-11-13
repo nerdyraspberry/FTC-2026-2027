@@ -6,7 +6,7 @@ import org.firstinspires.ftc.teamcode.opmodes.auto.BaseAutonomous;
 public class MoveState extends State<BaseAutonomous> {
     @Override
     public void onTransition(State<BaseAutonomous> from) {
-        this.runtime.drivetrain.move(0, 1).apply();
+        this.runtime.drivetrain.move(0, .5).apply();
     }
 
     @Override

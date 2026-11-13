@@ -14,7 +14,8 @@ public class IMUWrapper {
         this.imu = hardwareMap.get(IMU.class, "imu");
         // TODO bepaal orientatie en zet de juiste dingen neer bij logo en usb directie
         RevHubOrientationOnRobot revHubOrientationOnRobot = new RevHubOrientationOnRobot(
-                RevHubOrientationOnRobot.LogoFacingDirection.DOWN, RevHubOrientationOnRobot.UsbFacingDirection.DOWN
+                RevHubOrientationOnRobot.LogoFacingDirection.UP,
+                RevHubOrientationOnRobot.UsbFacingDirection.LEFT
         );
         imu.initialize(new IMU.Parameters(revHubOrientationOnRobot));
     }
