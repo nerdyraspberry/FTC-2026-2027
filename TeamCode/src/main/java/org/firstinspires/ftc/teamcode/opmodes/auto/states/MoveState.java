@@ -11,7 +11,7 @@ public class MoveState extends State<BaseAutonomous> {
 
     @Override
     public void onTick(double timeSinceStart) {
-        if (timeSinceStart >= 3.0)
+        if (timeSinceStart >= 0.5)
             this.stateMachine.transitionTo(new StallState());
     }
 }
