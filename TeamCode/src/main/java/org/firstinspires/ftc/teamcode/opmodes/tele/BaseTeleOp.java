@@ -132,7 +132,7 @@ public class BaseTeleOp extends LinearOpMode {
             if (debounceIntake.wasJustPressed(gamepad1.a))
                 intakeRunning = !intakeRunning;
             intake.setPower(intakeRunning ? 1.0 : 0.0);
-            middle.setPower(intakeRunning ? 1.0 : 0.0);
+            middle.setPower(intakeRunning ? -1.0 : 0.0);
             if (gamepad1.dpad_left)
                 smallAutoShooter.transitionTo(new SpinUpState(true));
             if (gamepad1.b) {
@@ -161,6 +161,7 @@ public class BaseTeleOp extends LinearOpMode {
 //            largeAutoShooter.tick(time);
             smallAutoShooter.tick(time);
             telemetry.addData("Outtake Mode", smallAutoShooter.getState());
+            telemetry.addData("Intake running?", intakeRunning);
             // - Mode telemetry
             telemetry.addData("Mode", manualSteering ? "Manual Steering" : "Targeting Scanner");
             telemetry.addData("Speed limit", speedLimit);

@@ -7,7 +7,6 @@ import org.firstinspires.ftc.teamcode.opmodes.tele.BaseTeleOp;
 public class IdleState extends State<BaseTeleOp> {
     @Override
     public void onTransition(State<BaseTeleOp> from) {
-        this.runtime.intake.setPower(Positionizer.OUTTAKE_ON);
         this.runtime.smallOuttake.setPower(Positionizer.OUTTAKE_OFF);
         this.runtime.hatch.setPosition(Positionizer.HATCH_CLOSED);
     }
