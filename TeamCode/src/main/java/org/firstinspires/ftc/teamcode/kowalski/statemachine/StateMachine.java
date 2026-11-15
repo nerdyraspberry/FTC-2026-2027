@@ -16,6 +16,11 @@ public class StateMachine<T> {
         this.runtime = runtime;
     }
 
+    /** Get the current state */
+    public State<T> getState() {
+        return this.state;
+    }
+
     /** Transition to a new state. Please note that the State object must have a runtime parameter
      * of the same type as the used state machine.
      */

@@ -8,11 +8,15 @@ import com.qualcomm.robotcore.hardware.Servo;
 
 import org.firstinspires.ftc.teamcode.data.Alliance;
 import org.firstinspires.ftc.teamcode.data.MecanumConfig;
-import org.firstinspires.ftc.teamcode.kowalski.autoshooter.AutoShooter;
 import org.firstinspires.ftc.teamcode.kowalski.Debouncer;
 import org.firstinspires.ftc.teamcode.kowalski.IMUWrapper;
 import org.firstinspires.ftc.teamcode.kowalski.ScannerResult;
 import org.firstinspires.ftc.teamcode.kowalski.TargetingScanner;
+import org.firstinspires.ftc.teamcode.kowalski.autoshooter.IdleState;
+import org.firstinspires.ftc.teamcode.kowalski.autoshooter.ShootingState;
+import org.firstinspires.ftc.teamcode.kowalski.autoshooter.SpinUpState;
+import org.firstinspires.ftc.teamcode.kowalski.statemachine.State;
+import org.firstinspires.ftc.teamcode.kowalski.statemachine.StateMachine;
 import org.firstinspires.ftc.teamcode.mecanum.MecanumDrive;
 
 public class BaseTeleOp extends LinearOpMode {
@@ -23,6 +27,9 @@ public class BaseTeleOp extends LinearOpMode {
     private String[] targetedCodes;
 
     private IMUWrapper imu;
+
+    public DcMotor intake, middle, smallOuttake;
+    public Servo hatch;
 
     public void setAlliance(Alliance alliance) {
         // This OpMode can be executed as either belonging to the Red or the Blue alliance.
@@ -51,10 +58,11 @@ public class BaseTeleOp extends LinearOpMode {
         this.targetingScanner.scanFor = this.targetedCodes;
         this.imu = new IMUWrapper(hardwareMap);
 
-        DcMotor intake = hardwareMap.get(DcMotor.class, "intake");
+        this.intake = hardwareMap.get(DcMotor.class, "intake");
+        this.middle = hardwareMap.get(DcMotor.class, "middle");
 //        DcMotor largeOuttake = hardwareMap.get(DcMotor.class, "largeOuttake");
-        DcMotor smallOuttake = hardwareMap.get(DcMotor.class, "smallOuttake");
-        Servo hatch = hardwareMap.get(Servo.class, "hatch");
+        this.smallOuttake = hardwareMap.get(DcMotor.class, "smallOuttake");
+        this.hatch = hardwareMap.get(Servo.class, "hatch");
         // Variables
         boolean manualSteering = true;
         boolean intakeRunning = false;
@@ -72,10 +80,12 @@ public class BaseTeleOp extends LinearOpMode {
         double targetingScannerRotation = 0.0;
 
 //        AutoShooter largeAutoShooter = new AutoShooter(largeOuttake, hatch);
-        AutoShooter smallAutoShooter = new AutoShooter(smallOuttake, hatch);
+        StateMachine<BaseTeleOp> smallAutoShooter = new StateMachine<>(this);
 
         // Main loop
         waitForStart();
+        smallAutoShooter.transitionTo(new IdleState());
+
         while (opModeIsActive()) {
             double time = getRuntime();
 
@@ -122,24 +132,30 @@ public class BaseTeleOp extends LinearOpMode {
             if (debounceIntake.wasJustPressed(gamepad1.a))
                 intakeRunning = !intakeRunning;
             intake.setPower(intakeRunning ? 1.0 : 0.0);
+            middle.setPower(intakeRunning ? 1.0 : 0.0);
             if (gamepad1.dpad_left)
-                smallAutoShooter.start(time);
+                smallAutoShooter.transitionTo(new SpinUpState(true));
             if (gamepad1.b) {
-                if (smallAutoShooter.isRunning()) smallAutoShooter.abort();
-//                if (largeAutoShooter.isRunning()) largeAutoShooter.abort();
+                if (smallAutoShooter.getState() instanceof IdleState)
+                    smallAutoShooter.transitionTo(new IdleState());
+                //                if (largeAutoShooter.isRunning()) largeAutoShooter.abort();
             }
 
             if (debouncePrev.wasJustPressed(gamepad1.left_trigger_pressed)) {
                 // Cycle back
-                smallAutoShooter.setState(
-                        smallAutoShooter.getState().back()
-                );
+                State<BaseTeleOp> curState = smallAutoShooter.getState();
+                if (curState instanceof SpinUpState)
+                    smallAutoShooter.transitionTo(new IdleState());
+                else if (curState instanceof ShootingState)
+                    smallAutoShooter.transitionTo(new SpinUpState(false));
             }
             if (debounceNext.wasJustPressed(gamepad1.right_trigger_pressed)) {
                 // Cycle forward
-                smallAutoShooter.setState(
-                        smallAutoShooter.getState().next()
-                );
+                State<BaseTeleOp> curState = smallAutoShooter.getState();
+                if (curState instanceof IdleState)
+                    smallAutoShooter.transitionTo(new SpinUpState(false));
+                else if (curState instanceof SpinUpState)
+                    smallAutoShooter.transitionTo(new ShootingState(false));
             }
             // - - Update intake/outtake motors
 //            largeAutoShooter.tick(time);
