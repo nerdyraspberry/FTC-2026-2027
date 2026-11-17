@@ -15,6 +15,7 @@ public class SpinUpState extends State<BaseTeleOp> {
     public void onTransition(State<BaseTeleOp> from) {
         this.runtime.smallOuttake.setPower(Positionizer.OUTTAKE_ON);
         this.runtime.hatch.setPosition(Positionizer.HATCH_CLOSED);
+        this.runtime.middle.setPower(Positionizer.MIDDLE_OFF);
     }
 
     @Override

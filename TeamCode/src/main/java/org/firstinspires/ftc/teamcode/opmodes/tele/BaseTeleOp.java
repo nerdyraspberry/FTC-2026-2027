@@ -65,12 +65,10 @@ public class BaseTeleOp extends LinearOpMode {
         this.hatch = hardwareMap.get(Servo.class, "hatch");
         // Variables
         boolean manualSteering = true;
-        boolean intakeRunning = false;
         double speedLimit = 1.0;
 
         Debouncer debounceDown = new Debouncer();
         Debouncer debounceUp = new Debouncer();
-        Debouncer debounceIntake = new Debouncer();
         Debouncer debouncePrev = new Debouncer();
         Debouncer debounceNext = new Debouncer();
 
@@ -100,7 +98,7 @@ public class BaseTeleOp extends LinearOpMode {
 
             if (scanRes.any) {
                 // Test: turn to buffer
-                double relativeTurn = -0.02 * scanRes.bearing;
+                double relativeTurn = 0.02 * scanRes.bearing;
                 final double MARGIN = 0.1;
                 if (Math.abs(relativeTurn) > MARGIN) {
                     targetingScannerRotation = relativeTurn;
@@ -129,10 +127,13 @@ public class BaseTeleOp extends LinearOpMode {
             if (debounceUp.wasJustPressed(gamepad1.dpad_up))
                 speedLimit = Math.min(speedLimit + .1, 1.0);
             // - Intake / outtake control
-            if (debounceIntake.wasJustPressed(gamepad1.a))
-                intakeRunning = !intakeRunning;
-            intake.setPower(intakeRunning ? 1.0 : 0.0);
-            middle.setPower(intakeRunning ? -1.0 : 0.0);
+            boolean intakeRunning = gamepad1.a;
+            if (gamepad1.left_bumper)
+                intake.setPower(-1.0);
+            else
+                intake.setPower(intakeRunning ? 1.0 : 0.0);
+            if (smallAutoShooter.getState() instanceof IdleState)
+                middle.setPower(intakeRunning ? -1.0 : 0.0);
             if (gamepad1.dpad_left)
                 smallAutoShooter.transitionTo(new SpinUpState(true));
             if (gamepad1.b) {

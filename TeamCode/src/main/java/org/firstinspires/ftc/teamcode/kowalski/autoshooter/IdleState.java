@@ -9,5 +9,6 @@ public class IdleState extends State<BaseTeleOp> {
     public void onTransition(State<BaseTeleOp> from) {
         this.runtime.smallOuttake.setPower(Positionizer.OUTTAKE_OFF);
         this.runtime.hatch.setPosition(Positionizer.HATCH_CLOSED);
+        this.runtime.middle.setPower(Positionizer.MIDDLE_OFF);
     }
 }
