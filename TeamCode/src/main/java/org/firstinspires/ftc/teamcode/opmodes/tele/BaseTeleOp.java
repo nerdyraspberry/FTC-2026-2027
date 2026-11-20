@@ -169,7 +169,7 @@ public class BaseTeleOp extends LinearOpMode {
             telemetry.update();
             // Configure the drivetrain
             drivetrain
-                    .move(gamepad1.left_stick_x * speedLimit, gamepad1.left_stick_y * speedLimit)
+                    .move(-gamepad1.left_stick_x * speedLimit, -gamepad1.left_stick_y * speedLimit)
                     .rotate(manualSteering ? gamepad1.right_stick_x * speedLimit
                             : targetingScannerRotation)
                     .apply();
